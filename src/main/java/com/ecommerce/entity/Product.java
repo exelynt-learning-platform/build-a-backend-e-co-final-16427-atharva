@@ -1,5 +1,6 @@
 package com.ecommerce.entity;
 
+import java.math.BigDecimal;
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -25,15 +26,18 @@ public class Product {
 
     @NotNull
     @PositiveOrZero
-    private Double price;
+    private BigDecimal price;
 
     @NotNull
     @PositiveOrZero
     private Integer stockQuantity;
 
+    @Version
+    private Long version;
+
     private String imageUrl;
 
-    public Product(String name, String description, Double price, Integer stockQuantity, String imageUrl) {
+    public Product(String name, String description, BigDecimal price, Integer stockQuantity, String imageUrl) {
         this.name = name;
         this.description = description;
         this.price = price;

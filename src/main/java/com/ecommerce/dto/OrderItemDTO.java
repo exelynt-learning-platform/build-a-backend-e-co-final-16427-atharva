@@ -1,5 +1,6 @@
 package com.ecommerce.dto;
 
+import java.math.BigDecimal;
 import lombok.Data;
 
 @Data
@@ -7,9 +8,9 @@ public class OrderItemDTO {
     private Long productId;
     private String productName;
     private Integer quantity;
-    private Double price;
+    private BigDecimal price;
 
-    public OrderItemDTO(Long productId, String productName, Integer quantity, Double price) {
+    public OrderItemDTO(Long productId, String productName, Integer quantity, BigDecimal price) {
         this.productId = productId;
         this.productName = productName;
         this.quantity = quantity;

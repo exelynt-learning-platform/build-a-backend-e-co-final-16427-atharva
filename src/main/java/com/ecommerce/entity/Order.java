@@ -2,6 +2,7 @@ package com.ecommerce.entity;
 
 import java.util.Date;
 import java.util.List;
+import java.math.BigDecimal;
 import javax.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,13 +23,16 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
 
-    private Double totalPrice;
+    private BigDecimal totalPrice;
     private String shippingAddress;
-    private String status; // PENDING, PAID, SHIPPED, DELIVERED, CANCELLED
+
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
+
     private String paymentId;
     private Date createdAt;
 
-    public Order(User user, Double totalPrice, String shippingAddress, String status) {
+    public Order(User user, BigDecimal totalPrice, String shippingAddress, OrderStatus status) {
         this.user = user;
         this.totalPrice = totalPrice;
         this.shippingAddress = shippingAddress;

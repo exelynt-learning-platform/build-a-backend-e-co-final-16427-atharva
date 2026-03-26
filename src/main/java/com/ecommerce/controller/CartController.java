@@ -3,7 +3,6 @@ package com.ecommerce.controller;
 import java.security.Principal;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +12,6 @@ import com.ecommerce.entity.User;
 import com.ecommerce.repository.UserRepository;
 import com.ecommerce.service.CartService;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/cart")
 public class CartController {
@@ -32,14 +30,7 @@ public class CartController {
     public List<CartItemDTO> getCart(Principal principal) {
         User user = getCurrentUser(principal);
         return cartService.getCartItems(user).stream()
-                .map(item -> new CartItemDTO(
-                        item.getId(),
-                        item.getProduct().getId(),
-                        item.getProduct().getName(),
-                        item.getProduct().getPrice(),
-                        item.getQuantity(),
-                        item.getProduct().getImageUrl()
-                ))
+                .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -47,28 +38,14 @@ public class CartController {
     public ResponseEntity<CartItemDTO> addToCart(Principal principal, @RequestParam Long productId, @RequestParam Integer quantity) {
         User user = getCurrentUser(principal);
         CartItem item = cartService.addToCart(user, productId, quantity);
-        return ResponseEntity.ok(new CartItemDTO(
-                item.getId(),
-                item.getProduct().getId(),
-                item.getProduct().getName(),
-                item.getProduct().getPrice(),
-                item.getQuantity(),
-                item.getProduct().getImageUrl()
-        ));
+        return ResponseEntity.ok(toDTO(item));
     }
 
     @PutMapping("/update/{cartItemId}")
     public ResponseEntity<CartItemDTO> updateCartItem(Principal principal, @PathVariable Long cartItemId, @RequestParam Integer quantity) {
         User user = getCurrentUser(principal);
         CartItem item = cartService.updateCartItem(user, cartItemId, quantity);
-        return ResponseEntity.ok(new CartItemDTO(
-                item.getId(),
-                item.getProduct().getId(),
-                item.getProduct().getName(),
-                item.getProduct().getPrice(),
-                item.getQuantity(),
-                item.getProduct().getImageUrl()
-        ));
+        return ResponseEntity.ok(toDTO(item));
     }
 
     @DeleteMapping("/remove/{cartItemId}")
@@ -76,5 +53,17 @@ public class CartController {
         User user = getCurrentUser(principal);
         cartService.removeFromCart(user, cartItemId);
         return ResponseEntity.ok().build();
+    }
+
+    // Extracted DTO mapper to eliminate duplication (CODE SMELL fix)
+    private CartItemDTO toDTO(CartItem item) {
+        return new CartItemDTO(
+                item.getId(),
+                item.getProduct().getId(),
+                item.getProduct().getName(),
+                item.getProduct().getPrice(),
+                item.getQuantity(),
+                item.getProduct().getImageUrl()
+        );
     }
 }

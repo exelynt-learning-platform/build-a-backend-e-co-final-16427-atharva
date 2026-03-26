@@ -7,6 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ecommerce.entity.CartItem;
 import com.ecommerce.entity.Product;
 import com.ecommerce.entity.User;
+import com.ecommerce.exception.InsufficientStockException;
+import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.repository.CartRepository;
 import com.ecommerce.repository.ProductRepository;
 
@@ -22,12 +24,13 @@ public class CartService {
         return cartRepository.findByUser(user);
     }
 
+    @Transactional
     public CartItem addToCart(User user, Long productId, Integer quantity) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
 
         if (product.getStockQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock");
+            throw new InsufficientStockException("Insufficient stock for product: " + product.getName());
         }
 
         return cartRepository.findByUserAndProduct(user, product)
@@ -38,25 +41,27 @@ public class CartService {
                 .orElseGet(() -> cartRepository.save(new CartItem(user, product, quantity)));
     }
 
+    @Transactional
     public CartItem updateCartItem(User user, Long cartItemId, Integer quantity) {
         CartItem cartItem = cartRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
 
         if (!cartItem.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Unauthorized access to cart item");
         }
 
         if (cartItem.getProduct().getStockQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock");
+            throw new InsufficientStockException("Insufficient stock for product: " + cartItem.getProduct().getName());
         }
 
         cartItem.setQuantity(quantity);
         return cartRepository.save(cartItem);
     }
 
+    @Transactional
     public void removeFromCart(User user, Long cartItemId) {
         CartItem cartItem = cartRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
 
         if (!cartItem.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Unauthorized access to cart item");

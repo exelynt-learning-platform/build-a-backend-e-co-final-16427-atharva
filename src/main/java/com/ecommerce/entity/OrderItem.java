@@ -1,5 +1,6 @@
 package com.ecommerce.entity;
 
+import java.math.BigDecimal;
 import javax.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,9 +23,9 @@ public class OrderItem {
     private Product product;
 
     private Integer quantity;
-    private Double price; // Price at the time of order
+    private BigDecimal price; // Price at the time of order
 
-    public OrderItem(Order order, Product product, Integer quantity, Double price) {
+    public OrderItem(Order order, Product product, Integer quantity, BigDecimal price) {
         this.order = order;
         this.product = product;
         this.quantity = quantity;

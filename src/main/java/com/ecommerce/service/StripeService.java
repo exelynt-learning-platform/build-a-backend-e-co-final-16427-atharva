@@ -1,9 +1,6 @@
 package com.ecommerce.service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.stripe.Stripe;
@@ -11,16 +8,25 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
 
+import javax.annotation.PostConstruct;
+
 @Service
 public class StripeService {
-    @Value("${stripe.secret.key:sk_test_placeholder}")
+    @Value("${stripe.secret.key}")
     private String secretKey;
 
-    public PaymentIntent createPaymentIntent(Double amount, String currency) throws StripeException {
+    @PostConstruct
+    public void validateConfig() {
+        if (secretKey == null || secretKey.isBlank() || secretKey.startsWith("sk_test_placeholder")) {
+            throw new IllegalStateException(
+                "Stripe secret key is not configured. Set 'stripe.secret.key' via environment variable or application.properties.");
+        }
         Stripe.apiKey = secretKey;
-        
-        // Stripe amount is in cents
-        long amountInCents = (long) (amount * 100);
+    }
+
+    public PaymentIntent createPaymentIntent(BigDecimal amount, String currency) throws StripeException {
+        // Stripe amount is in lowest currency unit (cents for USD)
+        long amountInCents = amount.multiply(BigDecimal.valueOf(100)).longValue();
 
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                 .setAmount(amountInCents)

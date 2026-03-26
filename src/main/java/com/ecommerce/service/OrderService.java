@@ -1,16 +1,20 @@
 package com.ecommerce.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ecommerce.entity.CartItem;
 import com.ecommerce.entity.Order;
 import com.ecommerce.entity.OrderItem;
+import com.ecommerce.entity.OrderStatus;
 import com.ecommerce.entity.Product;
 import com.ecommerce.entity.User;
+import com.ecommerce.exception.InsufficientStockException;
+import com.ecommerce.exception.ResourceNotFoundException;
+import com.ecommerce.repository.CartRepository;
 import com.ecommerce.repository.OrderRepository;
 import com.ecommerce.repository.ProductRepository;
 
@@ -20,44 +24,51 @@ public class OrderService {
     private OrderRepository orderRepository;
 
     @Autowired
-    private CartService cartService;
+    private CartRepository cartRepository;
 
     @Autowired
     private ProductRepository productRepository;
 
+    /**
+     * Creates an order from the user's cart.
+     * NOTE: Cart is NOT cleared here. It should be cleared only after successful
+     * payment confirmation (e.g., via a Stripe webhook handler).
+     */
     @Transactional
     public Order createOrder(User user, String shippingAddress) {
-        List<CartItem> cartItems = cartService.getCartItems(user);
+        List<CartItem> cartItems = cartRepository.findByUser(user);
         if (cartItems.isEmpty()) {
             throw new RuntimeException("Cart is empty");
         }
 
-        double total = cartItems.stream()
-                .mapToDouble(item -> item.getProduct().getPrice() * item.getQuantity())
-                .sum();
+        List<OrderItem> orderItems = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
 
-        Order order = new Order(user, total, shippingAddress, "PENDING");
-        
-        List<OrderItem> orderItems = cartItems.stream().map(cartItem -> {
-            Product product = cartItem.getProduct();
-            if (product.getStockQuantity() < cartItem.getQuantity()) {
-                throw new RuntimeException("Product " + product.getName() + " out of stock");
-            }
-            // Update stock
-            product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
-            productRepository.save(product);
-            
-            return new OrderItem(order, product, cartItem.getQuantity(), product.getPrice());
-        }).collect(Collectors.toList());
-
-        order.setItems(orderItems);
+        Order order = new Order(user, BigDecimal.ZERO, shippingAddress, OrderStatus.PENDING);
         Order savedOrder = orderRepository.save(order);
-        
-        // Clear cart after order creation (or wait for payment)
-        // Usually we clear after successful payment, but for this simple flow:
-        cartService.clearCart(user);
-        
-        return savedOrder;
+
+        for (CartItem cartItem : cartItems) {
+            Product product = cartItem.getProduct();
+            Integer requested = cartItem.getQuantity();
+
+            if (product.getStockQuantity() < requested) {
+                throw new InsufficientStockException("Product '" + product.getName() + "' has insufficient stock");
+            }
+
+            // Decrement stock (optimistic locking via @Version handles race conditions)
+            product.setStockQuantity(product.getStockQuantity() - requested);
+            productRepository.save(product);
+
+            BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(requested));
+            total = total.add(lineTotal);
+
+            orderItems.add(new OrderItem(savedOrder, product, requested, product.getPrice()));
+        }
+
+        savedOrder.setItems(orderItems);
+        savedOrder.setTotalPrice(total);
+
+        return orderRepository.save(savedOrder);
     }
 
     public List<Order> getUserOrders(User user) {
@@ -66,13 +77,30 @@ public class OrderService {
 
     public Order getOrderById(Long id) {
         return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
     }
 
-    public void updateOrderStatus(Long orderId, String status, String paymentId) {
+    /**
+     * Called by payment webhook/callback only — updates status after confirmed payment.
+     */
+    @Transactional
+    public void confirmPayment(Long orderId, String paymentId) {
+        Order order = getOrderById(orderId);
+        order.setStatus(OrderStatus.PAID);
+        order.setPaymentId(paymentId);
+        orderRepository.save(order);
+
+        // Clear cart only after successful payment
+        cartRepository.deleteByUser(order.getUser());
+    }
+
+    @Transactional
+    public void updateOrderStatus(Long orderId, OrderStatus status, String paymentId) {
         Order order = getOrderById(orderId);
         order.setStatus(status);
-        order.setPaymentId(paymentId);
+        if (paymentId != null) {
+            order.setPaymentId(paymentId);
+        }
         orderRepository.save(order);
     }
 }

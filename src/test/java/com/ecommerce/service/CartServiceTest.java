@@ -2,6 +2,7 @@ package com.ecommerce.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.mockito.MockitoAnnotations;
 import com.ecommerce.entity.CartItem;
 import com.ecommerce.entity.Product;
 import com.ecommerce.entity.User;
+import com.ecommerce.exception.InsufficientStockException;
 import com.ecommerce.repository.CartRepository;
 import com.ecommerce.repository.ProductRepository;
 
@@ -36,7 +38,7 @@ public class CartServiceTest {
         product = new Product();
         product.setId(1L);
         product.setName("Test Product");
-        product.setPrice(10.0);
+        product.setPrice(BigDecimal.valueOf(10.0));
         product.setStockQuantity(5);
     }
 
@@ -58,10 +60,8 @@ public class CartServiceTest {
     public void testAddToCart_InsufficientStock() {
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
 
-        Exception exception = assertThrows(RuntimeException.class, () -> {
+        assertThrows(InsufficientStockException.class, () -> {
             cartService.addToCart(user, 1L, 10);
         });
-
-        assertEquals("Insufficient stock", exception.getMessage());
     }
 }
