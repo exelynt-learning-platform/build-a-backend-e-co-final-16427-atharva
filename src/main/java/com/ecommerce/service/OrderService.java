@@ -86,6 +86,11 @@ public class OrderService {
     @Transactional
     public void confirmPayment(Long orderId, String paymentId) {
         Order order = getOrderById(orderId);
+        
+        if (order.getStatus() != OrderStatus.PROCESSED) {
+            throw new IllegalStateException("Cannot confirm payment: order is not in PROCESSED status");
+        }
+        
         order.setStatus(OrderStatus.PAID);
         order.setPaymentId(paymentId);
         orderRepository.save(order);

@@ -47,7 +47,7 @@ public class CartService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
 
         if (!cartItem.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access to cart item");
+            throw new com.ecommerce.exception.UnauthorizedAccessException("Unauthorized access to cart item");
         }
 
         if (cartItem.getProduct().getStockQuantity() < quantity) {

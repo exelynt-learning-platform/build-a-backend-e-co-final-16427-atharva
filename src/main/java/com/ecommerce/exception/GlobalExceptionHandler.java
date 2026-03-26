@@ -37,6 +37,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new MessageResponse(ex.getMessage()));
     }
 
+    @ExceptionHandler(com.ecommerce.exception.UnauthorizedAccessException.class)
+    public ResponseEntity<MessageResponse> handleUnauthorized(com.ecommerce.exception.UnauthorizedAccessException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new MessageResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(javax.persistence.OptimisticLockException.class)
+    public ResponseEntity<MessageResponse> handleOptimisticLocking(javax.persistence.OptimisticLockException ex) {
+        logger.error("Optimistic locking failure: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new MessageResponse("Resource was modified by another transaction. Please try again."));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<MessageResponse> handleRuntimeException(RuntimeException ex) {
         logger.warn("Business rule violation: {}", ex.getMessage());

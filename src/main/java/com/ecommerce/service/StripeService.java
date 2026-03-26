@@ -18,13 +18,20 @@ public class StripeService {
     @PostConstruct
     public void validateConfig() {
         if (secretKey == null || secretKey.isBlank() || secretKey.startsWith("sk_test_placeholder")) {
-            throw new IllegalStateException(
-                "Stripe secret key is not configured. Set 'stripe.secret.key' via environment variable or application.properties.");
+            System.err.println("WARNING: Stripe secret key is missing or invalid. Payments will fail. Set STRIPE_SECRET_KEY environment variable.");
+        } else {
+            Stripe.apiKey = secretKey;
         }
-        Stripe.apiKey = secretKey;
     }
 
     public PaymentIntent createPaymentIntent(BigDecimal amount, String currency) throws StripeException {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("Stripe is not properly configured. Cannot process payment.");
+        }
+        
+        // Stripe.apiKey can be explicitly set here just to be safe
+        Stripe.apiKey = secretKey;
+
         // Stripe amount is in lowest currency unit (cents for USD)
         long amountInCents = amount.multiply(BigDecimal.valueOf(100)).longValue();
 

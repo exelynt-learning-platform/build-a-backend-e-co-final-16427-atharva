@@ -23,7 +23,7 @@ public class CartController {
 
     private User getCurrentUser(Principal principal) {
         return userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new com.ecommerce.exception.ResourceNotFoundException("User not found"));
     }
 
     @GetMapping
