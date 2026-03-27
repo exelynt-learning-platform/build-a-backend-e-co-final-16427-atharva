@@ -21,6 +21,7 @@ import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 import com.stripe.exception.SignatureVerificationException;
 import com.ecommerce.constants.StripeConstants;
+import com.ecommerce.mapper.OrderMapper;
 import org.springframework.beans.factory.annotation.Value;
 
 @RestController
@@ -134,21 +135,6 @@ public class OrderController extends BaseController {
     }
 
     private OrderResponse mapToResponse(Order order) {
-        List<OrderItemDTO> items = order.getItems().stream()
-                        .map(item -> new OrderItemDTO(
-                                item.getProduct().getId(),
-                                item.getProduct().getName(),
-                                item.getQuantity(),
-                                item.getPrice()))
-                        .collect(Collectors.toList());
-
-        return new OrderResponse(
-                order.getId(),
-                order.getTotalPrice(),
-                order.getShippingAddress(),
-                order.getStatus() != null ? order.getStatus().name() : null,
-                order.getPaymentId(),
-                order.getCreatedAt(),
-                items);
+        return OrderMapper.toDTO(order);
     }
 }
