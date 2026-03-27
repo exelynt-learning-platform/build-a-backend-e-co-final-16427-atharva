@@ -39,7 +39,7 @@ public class OrderService {
     public Order createOrder(User user, String shippingAddress) {
         List<CartItem> cartItems = cartRepository.findByUser(user);
         if (cartItems.isEmpty()) {
-            throw new BusinessRuleException("Cart is empty");
+            throw new BusinessRuleException("Cannot create order: cart is empty");
         }
 
         List<OrderItem> orderItems = new ArrayList<>();
@@ -93,9 +93,18 @@ public class OrderService {
      */
     private void decrementStockForOrderItems(List<OrderItem> orderItems) {
         for (OrderItem item : orderItems) {
-            Product product = item.getProduct();
-            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
-            productRepository.save(product);
+            // Fetch fresh product instance to ensure persistence context
+            Product freshProduct = productRepository.findById(item.getProduct().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + item.getProduct().getId()));
+            
+            // Double-check stock availability before decrementing
+            if (freshProduct.getStockQuantity() < item.getQuantity()) {
+                throw new InsufficientStockException("Insufficient stock for product: " + freshProduct.getName() + 
+                        ". Available: " + freshProduct.getStockQuantity() + ", Requested: " + item.getQuantity());
+            }
+            
+            freshProduct.setStockQuantity(freshProduct.getStockQuantity() - item.getQuantity());
+            productRepository.save(freshProduct);
         }
     }
 

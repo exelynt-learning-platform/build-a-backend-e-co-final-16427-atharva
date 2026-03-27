@@ -24,6 +24,9 @@ public class JwtUtils {
     @Value("${jwt.expiration}")
     private int jwtExpirationMs;
 
+    @Value("${jwt.secret.min.length:32}")
+    private int jwtSecretMinLength;
+
     @PostConstruct
     public void validateJwtSecret() {
         if (!StringUtils.hasText(jwtSecret)) {
@@ -33,9 +36,9 @@ public class JwtUtils {
                 "For development, create a .env file with: JWT_SECRET=your-32-character-secret-key"
             );
         }
-        if (jwtSecret.length() < 32) {
+        if (jwtSecret.length() < jwtSecretMinLength) {
             throw new IllegalStateException(
-                "JWT secret must be at least 32 characters (256 bits) for security. " +
+                "JWT secret must be at least " + jwtSecretMinLength + " characters (256 bits) for security. " +
                 "Current length: " + jwtSecret.length() + " characters. " +
                 "Please use a longer secret for production."
             );

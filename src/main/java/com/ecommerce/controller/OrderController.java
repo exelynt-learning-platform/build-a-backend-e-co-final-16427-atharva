@@ -72,7 +72,7 @@ public class OrderController extends BaseController {
             throw new com.ecommerce.exception.UnauthorizedAccessException("Unauthorized access to order");
         }
         
-        if (order.getStatus() != OrderStatus.PENDING) {
+        if (order.getStatus() == null || order.getStatus() != OrderStatus.PENDING) {
             return ResponseEntity.badRequest().body("Order is not in PENDING status");
         }
 

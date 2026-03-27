@@ -21,6 +21,7 @@ public class CartService {
     @Autowired
     private ProductRepository productRepository;
 
+    @Transactional(readOnly = true)
     public List<CartItem> getCartItems(User user) {
         return cartRepository.findByUser(user);
     }
