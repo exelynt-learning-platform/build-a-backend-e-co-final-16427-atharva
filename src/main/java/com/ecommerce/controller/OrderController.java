@@ -20,6 +20,7 @@ import com.ecommerce.service.StripeService;
 import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 import com.stripe.exception.SignatureVerificationException;
+import com.ecommerce.constants.StripeConstants;
 import org.springframework.beans.factory.annotation.Value;
 
 @RestController
@@ -104,7 +105,7 @@ public class OrderController extends BaseController {
             );
             
             // Process the event based on type
-            if ("payment_intent.succeeded".equals(event.getType())) {
+            if (StripeConstants.PAYMENT_INTENT_SUCCEEDED.equals(event.getType())) {
                 com.stripe.model.PaymentIntent paymentIntent = (com.stripe.model.PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
                 if (paymentIntent != null) {
                     // Use payment intent ID to find order - paymentIntentId field stores the Stripe payment intent ID
@@ -112,7 +113,7 @@ public class OrderController extends BaseController {
                     logger.info("Payment confirmed for payment intent {} via webhook", paymentIntent.getId());
                     return ResponseEntity.ok("Payment confirmed");
                 }
-            } else if ("payment_intent.payment_failed".equals(event.getType())) {
+            } else if (StripeConstants.PAYMENT_INTENT_PAYMENT_FAILED.equals(event.getType())) {
                 com.stripe.model.PaymentIntent paymentIntent = (com.stripe.model.PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
                 if (paymentIntent != null) {
                     // Use payment intent ID to find order for failure handling

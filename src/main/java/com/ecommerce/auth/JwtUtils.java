@@ -27,10 +27,18 @@ public class JwtUtils {
     @PostConstruct
     public void validateJwtSecret() {
         if (!StringUtils.hasText(jwtSecret)) {
-            throw new IllegalStateException("JWT secret must be provided. Set JWT_SECRET environment variable.");
+            throw new IllegalStateException(
+                "JWT secret must be provided via JWT_SECRET environment variable (minimum 32 characters). " +
+                "Application cannot start without proper JWT configuration for security. " +
+                "For development, create a .env file with: JWT_SECRET=your-32-character-secret-key"
+            );
         }
         if (jwtSecret.length() < 32) {
-            throw new IllegalStateException("JWT secret must be at least 32 characters (256 bits) for security.");
+            throw new IllegalStateException(
+                "JWT secret must be at least 32 characters (256 bits) for security. " +
+                "Current length: " + jwtSecret.length() + " characters. " +
+                "Please use a longer secret for production."
+            );
         }
         logger.info("JWT configuration validated successfully");
     }

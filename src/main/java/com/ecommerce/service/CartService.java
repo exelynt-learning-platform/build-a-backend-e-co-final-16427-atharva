@@ -51,8 +51,11 @@ public class CartService {
             throw new UnauthorizedAccessException("Unauthorized access to cart item");
         }
 
-        if (cartItem.getProduct().getStockQuantity() < quantity) {
-            throw new InsufficientStockException("Insufficient stock for product: " + cartItem.getProduct().getName());
+        // Validate that the total quantity doesn't exceed available stock
+        Product product = cartItem.getProduct();
+        if (product.getStockQuantity() < quantity) {
+            throw new InsufficientStockException("Insufficient stock for product: " + product.getName() + 
+                    ". Available: " + product.getStockQuantity() + ", Requested: " + quantity);
         }
 
         cartItem.setQuantity(quantity);

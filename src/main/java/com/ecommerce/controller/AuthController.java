@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import com.ecommerce.constants.ErrorMessages;
 import com.ecommerce.constants.RoleConstants;
 import com.ecommerce.auth.JwtUtils;
 import com.ecommerce.auth.UserDetailsImpl;
@@ -90,27 +91,27 @@ public class AuthController {
 
 		if (strRoles == null) {
 			Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-					.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+					.orElseThrow(() -> new RuntimeException(ErrorMessages.ROLE_NOT_FOUND));
 			roles.add(userRole);
 		} else {
 			strRoles.forEach(role -> {
 				switch (role) {
 				case RoleConstants.ROLE_ADMIN:
 					Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
-							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+							.orElseThrow(() -> new RuntimeException(ErrorMessages.ROLE_NOT_FOUND));
 					roles.add(adminRole);
 
 					break;
 				case RoleConstants.ROLE_USER:
 					Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+							.orElseThrow(() -> new RuntimeException(ErrorMessages.ROLE_NOT_FOUND));
 					roles.add(userRole);
 
 					break;
 				default:
 					// Default to user role for any unrecognized role
 					Role defaultUserRole = roleRepository.findByName(ERole.ROLE_USER)
-							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+							.orElseThrow(() -> new RuntimeException(ErrorMessages.ROLE_NOT_FOUND));
 					roles.add(defaultUserRole);
 				}
 			});

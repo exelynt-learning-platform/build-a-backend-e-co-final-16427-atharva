@@ -44,3 +44,10 @@ Thumbs.db
 
 # Application config (override locally, not committed)
 src/main/resources/application-local.properties
+
+# Environment variables and secrets (NEVER COMMIT)
+.env
+.env.local
+.env.development
+.env.production
+*.env

@@ -15,6 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -27,6 +28,9 @@ public class WebSecurityConfig {
 
 	@Autowired
 	private AuthEntryPointJwt unauthorizedHandler;
+
+	@Value("${cors.allowed.origins:http://localhost:3000}")
+	private String[] allowedOrigins;
 
 	@Bean
 	public AuthTokenFilter authenticationJwtTokenFilter() {
@@ -77,8 +81,8 @@ public class WebSecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		// Configure specific allowed origins for production security
-		configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "https://yourfrontend.com"));
+		// Use configurable allowed origins from environment variable
+		configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
 		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Stripe-Signature"));
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

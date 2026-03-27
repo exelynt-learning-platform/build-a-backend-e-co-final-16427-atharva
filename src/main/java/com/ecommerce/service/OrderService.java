@@ -88,6 +88,18 @@ public class OrderService {
     }
 
     /**
+     * Helper method to decrement stock for order items.
+     * Centralized stock management to ensure consistency.
+     */
+    private void decrementStockForOrderItems(List<OrderItem> orderItems) {
+        for (OrderItem item : orderItems) {
+            Product product = item.getProduct();
+            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
+            productRepository.save(product);
+        }
+    }
+
+    /**
      * Called by payment webhook/callback only — updates status after confirmed payment.
      * Stock decrement happens here after successful payment confirmation.
      */
@@ -100,11 +112,7 @@ public class OrderService {
         }
         
         // Decrement stock only after successful payment confirmation
-        for (OrderItem item : order.getItems()) {
-            Product product = item.getProduct();
-            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
-            productRepository.save(product);
-        }
+        decrementStockForOrderItems(order.getItems());
         
         order.setStatus(OrderStatus.PAID);
         order.setPaymentId(paymentId);
