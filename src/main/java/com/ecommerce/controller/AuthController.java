@@ -101,10 +101,17 @@ public class AuthController {
 					roles.add(adminRole);
 
 					break;
-				default:
+				case RoleConstants.ROLE_USER:
 					Role userRole = roleRepository.findByName(ERole.ROLE_USER)
 							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
 					roles.add(userRole);
+
+					break;
+				default:
+					// Default to user role for any unrecognized role
+					Role defaultUserRole = roleRepository.findByName(ERole.ROLE_USER)
+							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+					roles.add(defaultUserRole);
 				}
 			});
 		}

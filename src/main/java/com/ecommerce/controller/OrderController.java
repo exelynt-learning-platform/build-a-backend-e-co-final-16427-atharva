@@ -107,7 +107,7 @@ public class OrderController extends BaseController {
             if ("payment_intent.succeeded".equals(event.getType())) {
                 com.stripe.model.PaymentIntent paymentIntent = (com.stripe.model.PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
                 if (paymentIntent != null) {
-                    // Find order by payment intent ID
+                    // Use payment intent ID to find order - paymentIntentId field stores the Stripe payment intent ID
                     orderService.confirmPaymentByIntentId(paymentIntent.getId(), paymentIntent.getId());
                     logger.info("Payment confirmed for payment intent {} via webhook", paymentIntent.getId());
                     return ResponseEntity.ok("Payment confirmed");
@@ -115,6 +115,7 @@ public class OrderController extends BaseController {
             } else if ("payment_intent.payment_failed".equals(event.getType())) {
                 com.stripe.model.PaymentIntent paymentIntent = (com.stripe.model.PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
                 if (paymentIntent != null) {
+                    // Use payment intent ID to find order for failure handling
                     orderService.handlePaymentFailure(paymentIntent.getId());
                     logger.warn("Payment failed for payment intent {}", paymentIntent.getId());
                     return ResponseEntity.ok("Payment failure recorded");

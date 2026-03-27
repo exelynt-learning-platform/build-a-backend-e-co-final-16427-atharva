@@ -24,18 +24,19 @@ public class StripeService {
     public void validateConfig() {
         if (!StringUtils.hasText(secretKey)) {
             logger.error("Stripe secret key is not configured. Set STRIPE_SECRET_KEY environment variable.");
-            // Don't throw exception in development to allow testing without Stripe
+            // Don't set API key when secret is missing
             return;
         }
         
         if (secretKey.startsWith("sk_test_placeholder")) {
             logger.error("Stripe secret key is using placeholder value. Set a real STRIPE_SECRET_KEY environment variable.");
-            // Don't throw exception in development to allow testing without Stripe
+            // Don't set API key for placeholder
             return;
         }
         
-        logger.info("Stripe configuration validated successfully");
+        // Always set the Stripe API key when we have a valid secret
         Stripe.apiKey = secretKey;
+        logger.info("Stripe configuration validated and API key set successfully");
     }
 
     public PaymentIntent createPaymentIntent(BigDecimal amount, String currency) throws StripeException {

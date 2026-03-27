@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import com.ecommerce.entity.Product;
 import com.ecommerce.service.ProductService;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {

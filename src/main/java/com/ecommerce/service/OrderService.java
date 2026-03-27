@@ -72,14 +72,8 @@ public class OrderService {
         savedOrder.setTotalPrice(total);
         Order finalOrder = orderRepository.save(savedOrder);
 
-        // Decrement stock only after order is successfully saved
-        for (CartItem cartItem : cartItems) {
-            Product product = cartItem.getProduct();
-            Integer requested = cartItem.getQuantity();
-            
-            product.setStockQuantity(product.getStockQuantity() - requested);
-            productRepository.save(product);
-        }
+        // Stock is NOT decremented here - moved to confirmPayment after successful payment
+        // This prevents negative stock quantities if payment fails
 
         return finalOrder;
     }
