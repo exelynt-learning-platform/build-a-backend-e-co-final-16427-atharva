@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import com.ecommerce.constants.RoleConstants;
 import com.ecommerce.auth.JwtUtils;
 import com.ecommerce.auth.UserDetailsImpl;
 import com.ecommerce.entity.ERole;
@@ -95,7 +96,7 @@ public class AuthController {
 		} else {
 			strRoles.forEach(role -> {
 				switch (role) {
-				case "admin":
+				case RoleConstants.ROLE_ADMIN:
 					Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
 							.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
 					roles.add(adminRole);

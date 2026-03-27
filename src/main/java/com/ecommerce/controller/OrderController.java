@@ -37,7 +37,7 @@ public class OrderController {
     @Autowired
     private UserRepository userRepository;
 
-    @Value("${stripe.webhook.secret:whsec_test_placeholder}")
+    @Value("${stripe.webhook.secret:}")
     private String webhookSecret;
 
     private User getCurrentUser(Principal principal) {
@@ -93,7 +93,7 @@ public class OrderController {
     }
 
     /**
-     * Stripe webhook endpoint — call this after receiving payment.succeeded event.
+     * Stripe webhook endpoint — handles payment confirmation from Stripe.
      */
     @PostMapping("/webhook/confirm/{orderId}")
     public ResponseEntity<String> confirmPayment(
@@ -102,22 +102,36 @@ public class OrderController {
             @RequestHeader("Stripe-Signature") String sigHeader) {
         
         try {
-            // Verify signature using the Stripe SDK
-            Webhook.Signature.verifyHeader(payload, sigHeader, webhookSecret, 300L);
+            if (webhookSecret == null || webhookSecret.isEmpty()) {
+                logger.error("Webhook secret not configured. Cannot verify Stripe signature.");
+                return ResponseEntity.status(500).body("Webhook not properly configured");
+            }
             
-            // Wait, payload should be a parsed event handling for actual implementation.
-            // For this specific system logic, we'll act as if it's verified and proceed.
-            // A genuine implementation would parse Event event = Webhook.constructEvent(...)
-            // However, to satisfy the code review, we just need signature verification.
+            // Proper Stripe event construction and verification
+            com.stripe.model.Event event = Webhook.constructEvent(
+                payload, sigHeader, webhookSecret
+            );
             
-            // In our basic flow we're sent the paymentId somehow (maybe in payload).
-            // Example: extracting ID or passing dummy status since signature is verified.
-            orderService.confirmPayment(orderId, "evt_stripe_confirmed");
-            return ResponseEntity.ok("Success");
+            // Process the event based on type
+            if ("payment_intent.succeeded".equals(event.getType())) {
+                com.stripe.model.PaymentIntent paymentIntent = (com.stripe.model.PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
+                if (paymentIntent != null) {
+                    orderService.confirmPayment(orderId, paymentIntent.getId());
+                    logger.info("Payment confirmed for order {} via webhook", orderId);
+                    return ResponseEntity.ok("Payment confirmed");
+                }
+            } else if ("payment_intent.payment_failed".equals(event.getType())) {
+                logger.warn("Payment failed for order {}", orderId);
+                // Could update order status to FAILED here
+                return ResponseEntity.ok("Payment failure recorded");
+            }
+            
+            return ResponseEntity.ok("Event processed");
         } catch (SignatureVerificationException e) {
             logger.error("Stripe signature verification failed: {}", e.getMessage());
             return ResponseEntity.status(400).body("Invalid signature");
         } catch (Exception e) {
+            logger.error("Error processing webhook for order {}: {}", orderId, e.getMessage());
             return ResponseEntity.status(500).body("Internal error");
         }
     }

@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import com.ecommerce.dto.MessageResponse;
+import com.ecommerce.exception.BusinessRuleException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -48,10 +49,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new MessageResponse("Resource was modified by another transaction. Please try again."));
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<MessageResponse> handleRuntimeException(RuntimeException ex) {
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<MessageResponse> handleBusinessRuleViolation(BusinessRuleException ex) {
         logger.warn("Business rule violation: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new MessageResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<MessageResponse> handleRuntimeException(RuntimeException ex) {
+        logger.error("Unexpected runtime exception: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new MessageResponse("An unexpected error occurred"));
     }
 
     @ExceptionHandler(Exception.class)

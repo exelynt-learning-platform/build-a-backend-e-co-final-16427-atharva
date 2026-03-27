@@ -9,6 +9,7 @@ import com.ecommerce.entity.Product;
 import com.ecommerce.entity.User;
 import com.ecommerce.exception.InsufficientStockException;
 import com.ecommerce.exception.ResourceNotFoundException;
+import com.ecommerce.exception.UnauthorizedAccessException;
 import com.ecommerce.repository.CartRepository;
 import com.ecommerce.repository.ProductRepository;
 
@@ -47,7 +48,7 @@ public class CartService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
 
         if (!cartItem.getUser().getId().equals(user.getId())) {
-            throw new com.ecommerce.exception.UnauthorizedAccessException("Unauthorized access to cart item");
+            throw new UnauthorizedAccessException("Unauthorized access to cart item");
         }
 
         if (cartItem.getProduct().getStockQuantity() < quantity) {
@@ -64,7 +65,7 @@ public class CartService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
 
         if (!cartItem.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access to cart item");
+            throw new UnauthorizedAccessException("Unauthorized access to cart item");
         }
 
         cartRepository.delete(cartItem);

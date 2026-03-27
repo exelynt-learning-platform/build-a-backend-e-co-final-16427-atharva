@@ -12,6 +12,7 @@ import com.ecommerce.entity.OrderItem;
 import com.ecommerce.entity.OrderStatus;
 import com.ecommerce.entity.Product;
 import com.ecommerce.entity.User;
+import com.ecommerce.exception.BusinessRuleException;
 import com.ecommerce.exception.InsufficientStockException;
 import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.repository.CartRepository;
@@ -38,11 +39,21 @@ public class OrderService {
     public Order createOrder(User user, String shippingAddress) {
         List<CartItem> cartItems = cartRepository.findByUser(user);
         if (cartItems.isEmpty()) {
-            throw new RuntimeException("Cart is empty");
+            throw new BusinessRuleException("Cart is empty");
         }
 
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
+
+        // Validate stock first before any database modifications
+        for (CartItem cartItem : cartItems) {
+            Product product = cartItem.getProduct();
+            Integer requested = cartItem.getQuantity();
+            
+            if (product.getStockQuantity() < requested) {
+                throw new InsufficientStockException("Product '" + product.getName() + "' has insufficient stock");
+            }
+        }
 
         Order order = new Order(user, BigDecimal.ZERO, shippingAddress, OrderStatus.PENDING);
         Order savedOrder = orderRepository.save(order);
@@ -50,14 +61,6 @@ public class OrderService {
         for (CartItem cartItem : cartItems) {
             Product product = cartItem.getProduct();
             Integer requested = cartItem.getQuantity();
-
-            if (product.getStockQuantity() < requested) {
-                throw new InsufficientStockException("Product '" + product.getName() + "' has insufficient stock");
-            }
-
-            // Decrement stock (optimistic locking via @Version handles race conditions)
-            product.setStockQuantity(product.getStockQuantity() - requested);
-            productRepository.save(product);
 
             BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(requested));
             total = total.add(lineTotal);
@@ -67,8 +70,18 @@ public class OrderService {
 
         savedOrder.setItems(orderItems);
         savedOrder.setTotalPrice(total);
+        Order finalOrder = orderRepository.save(savedOrder);
 
-        return orderRepository.save(savedOrder);
+        // Decrement stock only after order is successfully saved
+        for (CartItem cartItem : cartItems) {
+            Product product = cartItem.getProduct();
+            Integer requested = cartItem.getQuantity();
+            
+            product.setStockQuantity(product.getStockQuantity() - requested);
+            productRepository.save(product);
+        }
+
+        return finalOrder;
     }
 
     public List<Order> getUserOrders(User user) {

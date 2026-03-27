@@ -10,6 +10,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import com.ecommerce.entity.*;
+import com.ecommerce.exception.BusinessRuleException;
+import com.ecommerce.exception.InsufficientStockException;
 import com.ecommerce.repository.CartRepository;
 import com.ecommerce.repository.OrderRepository;
 import com.ecommerce.repository.ProductRepository;
@@ -64,7 +66,17 @@ public class OrderServiceTest {
     public void testCreateOrder_EmptyCart() {
         when(cartRepository.findByUser(user)).thenReturn(Collections.emptyList());
 
-        assertThrows(RuntimeException.class, () -> {
+        assertThrows(BusinessRuleException.class, () -> {
+            orderService.createOrder(user, "123 Street");
+        });
+    }
+    
+    @Test
+    public void testCreateOrder_InsufficientStock() {
+        product.setStockQuantity(1); // Less than requested quantity (2)
+        when(cartRepository.findByUser(user)).thenReturn(Collections.singletonList(cartItem));
+
+        assertThrows(InsufficientStockException.class, () -> {
             orderService.createOrder(user, "123 Street");
         });
     }
