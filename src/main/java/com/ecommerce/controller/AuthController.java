@@ -27,7 +27,6 @@ import com.ecommerce.dto.SignupRequest;
 import com.ecommerce.repository.RoleRepository;
 import com.ecommerce.repository.UserRepository;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

@@ -11,22 +11,13 @@ import com.ecommerce.entity.CartItem;
 import com.ecommerce.entity.User;
 import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.mapper.CartItemMapper;
-import com.ecommerce.repository.UserRepository;
 import com.ecommerce.service.CartService;
 
 @RestController
 @RequestMapping("/api/cart")
-public class CartController {
+public class CartController extends BaseController {
     @Autowired
     private CartService cartService;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    private User getCurrentUser(Principal principal) {
-        return userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-    }
 
     @GetMapping
     public List<CartItemDTO> getCart(Principal principal) {

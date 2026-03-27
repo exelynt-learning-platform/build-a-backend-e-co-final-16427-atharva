@@ -15,7 +15,6 @@ import com.ecommerce.dto.OrderResponse;
 import com.ecommerce.entity.Order;
 import com.ecommerce.entity.OrderStatus;
 import com.ecommerce.entity.User;
-import com.ecommerce.repository.UserRepository;
 import com.ecommerce.service.OrderService;
 import com.ecommerce.service.StripeService;
 import com.stripe.model.PaymentIntent;
@@ -25,7 +24,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/api/orders")
-public class OrderController {
+public class OrderController extends BaseController {
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
 
     @Autowired
@@ -34,16 +33,8 @@ public class OrderController {
     @Autowired
     private StripeService stripeService;
 
-    @Autowired
-    private UserRepository userRepository;
-
     @Value("${stripe.webhook.secret:}")
     private String webhookSecret;
-
-    private User getCurrentUser(Principal principal) {
-        return userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
 
     @PostMapping("/create")
     public ResponseEntity<OrderResponse> createOrder(Principal principal, @Valid @RequestBody OrderRequest orderRequest) {
@@ -94,10 +85,10 @@ public class OrderController {
 
     /**
      * Stripe webhook endpoint — handles payment confirmation from Stripe.
+     * Extracts order from payment intent metadata instead of URL path.
      */
-    @PostMapping("/webhook/confirm/{orderId}")
+    @PostMapping("/webhook/confirm")
     public ResponseEntity<String> confirmPayment(
-            @PathVariable Long orderId, 
             @RequestBody String payload, 
             @RequestHeader("Stripe-Signature") String sigHeader) {
         
@@ -116,14 +107,18 @@ public class OrderController {
             if ("payment_intent.succeeded".equals(event.getType())) {
                 com.stripe.model.PaymentIntent paymentIntent = (com.stripe.model.PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
                 if (paymentIntent != null) {
-                    orderService.confirmPayment(orderId, paymentIntent.getId());
-                    logger.info("Payment confirmed for order {} via webhook", orderId);
+                    // Find order by payment intent ID
+                    orderService.confirmPaymentByIntentId(paymentIntent.getId(), paymentIntent.getId());
+                    logger.info("Payment confirmed for payment intent {} via webhook", paymentIntent.getId());
                     return ResponseEntity.ok("Payment confirmed");
                 }
             } else if ("payment_intent.payment_failed".equals(event.getType())) {
-                logger.warn("Payment failed for order {}", orderId);
-                // Could update order status to FAILED here
-                return ResponseEntity.ok("Payment failure recorded");
+                com.stripe.model.PaymentIntent paymentIntent = (com.stripe.model.PaymentIntent) event.getDataObjectDeserializer().getObject().orElse(null);
+                if (paymentIntent != null) {
+                    orderService.handlePaymentFailure(paymentIntent.getId());
+                    logger.warn("Payment failed for payment intent {}", paymentIntent.getId());
+                    return ResponseEntity.ok("Payment failure recorded");
+                }
             }
             
             return ResponseEntity.ok("Event processed");
@@ -131,7 +126,7 @@ public class OrderController {
             logger.error("Stripe signature verification failed: {}", e.getMessage());
             return ResponseEntity.status(400).body("Invalid signature");
         } catch (Exception e) {
-            logger.error("Error processing webhook for order {}: {}", orderId, e.getMessage());
+            logger.error("Error processing webhook: {}", e.getMessage());
             return ResponseEntity.status(500).body("Internal error");
         }
     }

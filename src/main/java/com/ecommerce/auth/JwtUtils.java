@@ -6,10 +6,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import java.security.Key;
 import java.nio.charset.StandardCharsets;
+
+import javax.annotation.PostConstruct;
 
 @Component
 public class JwtUtils {
@@ -20,6 +23,17 @@ public class JwtUtils {
 
     @Value("${jwt.expiration}")
     private int jwtExpirationMs;
+
+    @PostConstruct
+    public void validateJwtSecret() {
+        if (!StringUtils.hasText(jwtSecret)) {
+            throw new IllegalStateException("JWT secret must be provided. Set JWT_SECRET environment variable.");
+        }
+        if (jwtSecret.length() < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 characters (256 bits) for security.");
+        }
+        logger.info("JWT configuration validated successfully");
+    }
 
     public String generateJwtToken(Authentication authentication) {
         UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();

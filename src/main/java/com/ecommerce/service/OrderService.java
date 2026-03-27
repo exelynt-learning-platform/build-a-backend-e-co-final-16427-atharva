@@ -95,6 +95,7 @@ public class OrderService {
 
     /**
      * Called by payment webhook/callback only — updates status after confirmed payment.
+     * Stock decrement happens here after successful payment confirmation.
      */
     @Transactional
     public void confirmPayment(Long orderId, String paymentId) {
@@ -102,6 +103,13 @@ public class OrderService {
         
         if (order.getStatus() != OrderStatus.PROCESSED) {
             throw new IllegalStateException("Cannot confirm payment: order is not in PROCESSED status");
+        }
+        
+        // Decrement stock only after successful payment confirmation
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
+            productRepository.save(product);
         }
         
         order.setStatus(OrderStatus.PAID);
@@ -112,12 +120,42 @@ public class OrderService {
         cartRepository.deleteByUser(order.getUser());
     }
 
+    /**
+     * Find order by payment intent ID and confirm payment.
+     * Used by webhook to identify orders without orderId in URL.
+     */
+    @Transactional
+    public void confirmPaymentByIntentId(String paymentIntentId, String paymentId) {
+        Order order = orderRepository.findByPaymentIntentId(paymentIntentId);
+        if (order == null) {
+            throw new ResourceNotFoundException("Order not found with payment intent ID: " + paymentIntentId);
+        }
+        
+        confirmPayment(order.getId(), paymentId);
+    }
+
+    /**
+     * Handle payment failure - update order status.
+     */
+    @Transactional
+    public void handlePaymentFailure(String paymentIntentId) {
+        Order order = orderRepository.findByPaymentIntentId(paymentIntentId);
+        if (order == null) {
+            throw new ResourceNotFoundException("Order not found with payment intent ID: " + paymentIntentId);
+        }
+        
+        order.setStatus(OrderStatus.FAILED);
+        orderRepository.save(order);
+    }
+
     @Transactional
     public void updateOrderStatus(Long orderId, OrderStatus status, String paymentId) {
         Order order = getOrderById(orderId);
         order.setStatus(status);
         if (paymentId != null) {
             order.setPaymentId(paymentId);
+            // Store payment intent ID for webhook verification
+            order.setPaymentIntentId(paymentId);
         }
         orderRepository.save(order);
     }

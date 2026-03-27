@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
@@ -21,12 +22,20 @@ public class StripeService {
 
     @PostConstruct
     public void validateConfig() {
-        if (secretKey == null || secretKey.isEmpty() || secretKey.startsWith("sk_test_placeholder")) {
-            logger.error("Stripe secret key is missing or invalid. Payments will fail. Set STRIPE_SECRET_KEY environment variable.");
-        } else {
-            logger.info("Stripe configuration validated successfully");
-            Stripe.apiKey = secretKey;
+        if (!StringUtils.hasText(secretKey)) {
+            logger.error("Stripe secret key is not configured. Set STRIPE_SECRET_KEY environment variable.");
+            // Don't throw exception in development to allow testing without Stripe
+            return;
         }
+        
+        if (secretKey.startsWith("sk_test_placeholder")) {
+            logger.error("Stripe secret key is using placeholder value. Set a real STRIPE_SECRET_KEY environment variable.");
+            // Don't throw exception in development to allow testing without Stripe
+            return;
+        }
+        
+        logger.info("Stripe configuration validated successfully");
+        Stripe.apiKey = secretKey;
     }
 
     public PaymentIntent createPaymentIntent(BigDecimal amount, String currency) throws StripeException {

@@ -29,6 +29,9 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
+    @Column(unique = true)
+    private String paymentIntentId;
+    
     private String paymentId;
     private Date createdAt;
 
