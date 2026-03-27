@@ -30,25 +30,23 @@ public class JwtUtils {
     @PostConstruct
     public void validateJwtSecret() {
         if (!StringUtils.hasText(jwtSecret)) {
-            logger.error("JWT secret is not configured. Set JWT_SECRET environment variable with at least {} characters.", jwtSecretMinLength);
-            logger.error("For development, create a .env file with: JWT_SECRET=your-{}-character-secret-key", jwtSecretMinLength);
-            logger.error("Application will continue with limited functionality for development purposes.");
-            // Don't throw exception in development to allow testing without JWT
-            return;
+            throw new IllegalStateException(
+                "JWT secret must be provided via JWT_SECRET environment variable (minimum 32 characters). " +
+                "Application cannot start without proper JWT configuration for security. " +
+                "For development, create a .env file with: JWT_SECRET=your-32-character-secret-key"
+            );
         }
         if (jwtSecret.length() < jwtSecretMinLength) {
-            logger.error("JWT secret is too short ({} characters). Minimum required: {} characters.", jwtSecret.length(), jwtSecretMinLength);
-            logger.error("Please use a longer secret for production security.");
-            // Don't throw exception in development to allow testing with short secrets
-            return;
+            throw new IllegalStateException(
+                "JWT secret must be at least " + jwtSecretMinLength + " characters (256 bits) for security. " +
+                "Current length: " + jwtSecret.length() + " characters. " +
+                "Please use a longer secret for production."
+            );
         }
-        logger.info("JWT configuration validated successfully ({} characters)", jwtSecret.length());
+        logger.info("JWT configuration validated successfully");
     }
 
     public String generateJwtToken(Authentication authentication) {
-        if (!StringUtils.hasText(jwtSecret)) {
-            throw new IllegalStateException("JWT secret is not configured. Cannot generate token without proper security configuration.");
-        }
         UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
 
         return Jwts.builder()
@@ -68,24 +66,20 @@ public class JwtUtils {
                 .parseClaimsJws(token).getBody().getSubject();
     }
 
-    public boolean validateJwtToken(String token) {
-        if (!StringUtils.hasText(jwtSecret)) {
-            logger.warn("JWT secret is not configured. Token validation will fail.");
-            return false;
-        }
+    public boolean validateJwtToken(String authToken) {
         try {
-            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
+            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(authToken);
             return true;
-        } catch (io.jsonwebtoken.security.SignatureException e) {
+        } catch (SecurityException e) {
             logger.error("Invalid JWT signature: {}", e.getMessage());
         } catch (MalformedJwtException e) {
             logger.error("Invalid JWT token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            logger.error("Expired JWT token: {}", e.getMessage());
+            logger.error("JWT token is expired: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
-            logger.error("Unsupported JWT token: {}", e.getMessage());
+            logger.error("JWT token is unsupported: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            logger.error("JWT token claims string is empty: {}", e.getMessage());
+            logger.error("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
     }

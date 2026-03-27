@@ -32,8 +32,8 @@ public class OrderService {
 
     /**
      * Creates an order from the user's cart.
-     * NOTE: Stock is NOT decremented here - moved to confirmPayment after successful payment.
-     * Cart is NOT cleared here - cleared only after successful payment confirmation.
+     * NOTE: Cart is NOT cleared here. It should be cleared only after successful
+     * payment confirmation (e.g., via a Stripe webhook handler).
      */
     @Transactional
     public Order createOrder(User user, String shippingAddress) {
@@ -88,17 +88,6 @@ public class OrderService {
     }
 
     /**
-     * Validates stock availability for a product and quantity.
-     * Centralized stock validation to avoid duplication.
-     */
-    private void validateStockAvailability(Product product, Integer requestedQuantity) {
-        if (product.getStockQuantity() < requestedQuantity) {
-            throw new InsufficientStockException("Insufficient stock for product: " + product.getName() + 
-                    ". Available: " + product.getStockQuantity() + ", Requested: " + requestedQuantity);
-        }
-    }
-
-    /**
      * Helper method to decrement stock for order items.
      * Centralized stock management to ensure consistency.
      */
@@ -109,7 +98,10 @@ public class OrderService {
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + item.getProduct().getId()));
             
             // Double-check stock availability before decrementing
-            validateStockAvailability(freshProduct, item.getQuantity());
+            if (freshProduct.getStockQuantity() < item.getQuantity()) {
+                throw new InsufficientStockException("Insufficient stock for product: " + freshProduct.getName() + 
+                        ". Available: " + freshProduct.getStockQuantity() + ", Requested: " + item.getQuantity());
+            }
             
             freshProduct.setStockQuantity(freshProduct.getStockQuantity() - item.getQuantity());
             productRepository.save(freshProduct);
@@ -128,7 +120,7 @@ public class OrderService {
             throw new IllegalStateException("Cannot confirm payment: order is not in PROCESSED status");
         }
         
-        // Decrement stock only after successful payment confirmation and status validation
+        // Decrement stock only after successful payment confirmation
         decrementStockForOrderItems(order.getItems());
         
         order.setStatus(OrderStatus.PAID);
@@ -144,13 +136,13 @@ public class OrderService {
      * Used by webhook to identify orders without orderId in URL.
      */
     @Transactional
-    public void confirmPaymentByIntentId(String paymentIntentId, String stripePaymentIntentId) {
+    public void confirmPaymentByIntentId(String paymentIntentId, String paymentId) {
         Order order = orderRepository.findByPaymentIntentId(paymentIntentId);
         if (order == null) {
             throw new ResourceNotFoundException("Order not found with payment intent ID: " + paymentIntentId);
         }
         
-        confirmPayment(order.getId(), stripePaymentIntentId);
+        confirmPayment(order.getId(), paymentId);
     }
 
     /**
